@@ -1,0 +1,907 @@
+// u SemanticAnalyzer init:
+Obj sortSet = Tab.insert(Obj.Meth, "sortSet", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var, "s", Tab.find("set").getType());
+sortSet.setLevel(1);
+Tab.closeScope();
+
+
+
+Obj sortSet = Tab.find("sortSet");
+// ..., S
+Code.put(Code.call);
+Code.put2(sortSet.getAdr() - Code.pc + 1);
+
+
+
+private static void generateSortSet() {
+    Obj sortSet = Tab.find("sortSet");
+    sortSet.setAdr(Code.pc);
+
+    // formals=1: s(0); locals: i(1), j(2), t(3)  => total=4
+    Code.put(Code.enter);
+    Code.put(1);
+    Code.put(4);
+
+    // i = 1
+    Code.loadConst(1);
+    Code.put(Code.store_n + 1);
+
+    int L_outer = Code.pc;
+    // if (i >= s[0]) END
+    Code.put(Code.load_n + 1);          // i
+    Code.put(Code.load_n);              // s
+    Code.loadConst(0);
+    Code.put(Code.aload);               // n = s[0]
+    Code.putFalseJump(Code.lt, 0);      // i < n ?
+    int J_end = Code.pc - 2;
+
+    // j = 1
+    Code.loadConst(1);
+    Code.put(Code.store_n + 2);
+
+    int L_inner = Code.pc;
+    // if (j >= n - i + 1) INC_I   (ekvivalentno: j < n - i + 1)
+    Code.put(Code.load_n + 2);          // j
+    Code.put(Code.load_n);              // s
+    Code.loadConst(0);
+    Code.put(Code.aload);               // n
+    Code.put(Code.load_n + 1);          // i
+    Code.put(Code.sub);                 // n - i
+    Code.putFalseJump(Code.lt, 0);      // j < (n - i) ?
+    int J_inc_i = Code.pc - 2;
+
+    // if (s[j] > s[j+1]) swap
+    // s[j]
+    Code.put(Code.load_n);              // s
+    Code.put(Code.load_n + 2);          // j
+    Code.put(Code.aload);               // s[j]
+
+    // s[j+1]
+    Code.put(Code.load_n);              // s
+    Code.put(Code.load_n + 2);          // j
+    Code.loadConst(1);
+    Code.put(Code.add);                 // j+1
+    Code.put(Code.aload);               // s[j+1]
+
+    Code.putFalseJump(Code.gt, 0);      // if !(s[j] > s[j+1]) skip
+    int J_skip = Code.pc - 2;
+
+    // t = s[j]
+    Code.put(Code.load_n);              // s
+    Code.put(Code.load_n + 2);          // j
+    Code.put(Code.aload);
+    Code.put(Code.store_n + 3);         // t
+
+    // s[j] = s[j+1]
+    Code.put(Code.load_n);              // s
+    Code.put(Code.load_n + 2);          // j
+    Code.put(Code.load_n);              // s
+    Code.put(Code.load_n + 2);          // j
+    Code.loadConst(1); Code.put(Code.add);
+    Code.put(Code.aload);               // s[j+1]
+    Code.put(Code.astore);
+
+    // s[j+1] = t
+    Code.put(Code.load_n);              // s
+    Code.put(Code.load_n + 2);          // j
+    Code.loadConst(1); Code.put(Code.add);
+    Code.put(Code.load_n + 3);          // t
+    Code.put(Code.astore);
+
+    // skip:
+    Code.fixup(J_skip);
+
+    // j++
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 2);
+    Code.putJump(L_inner);
+
+    // INC_I:
+    Code.fixup(J_inc_i);
+    Code.put(Code.load_n + 1);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 1);
+    Code.putJump(L_outer);
+
+    // END:
+    Code.fixup(J_end);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+
+
+
+Obj swapBetween = Tab.insert(Obj.Meth, "swapBetween", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var, "A", Tab.find("set").getType());
+Tab.insert(Obj.Var, "i", Tab.intType);
+Tab.insert(Obj.Var, "B", Tab.find("set").getType());
+Tab.insert(Obj.Var, "j", Tab.intType);
+swapBetween.setLevel(1);
+Tab.closeScope();
+
+
+private static void generateSwapBetween() {
+    Obj swapBetween = Tab.find("swapBetween");
+    swapBetween.setAdr(Code.pc);
+
+    // formals=4: A(0), i(1), B(2), j(3); locals: t(4) => total=5
+    Code.put(Code.enter);
+    Code.put(4);
+    Code.put(5);
+
+    // provere: 1 <= i <= A[0], 1 <= j <= B[0]  (trap(2) na fail)
+    // i >= 1 ?
+    Code.put(Code.load_n + 1); Code.loadConst(1);
+    int okIge1 = Code.pc + 1; Code.putFalseJump(Code.ge, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okIge1);
+    // i <= A[0] ?
+    Code.put(Code.load_n + 1);
+    Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    int okIle = Code.pc + 1; Code.putFalseJump(Code.le, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okIle);
+
+    // j >= 1 ?
+    Code.put(Code.load_n + 3); Code.loadConst(1);
+    int okJge1 = Code.pc + 1; Code.putFalseJump(Code.ge, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okJge1);
+    // j <= B[0] ?
+    Code.put(Code.load_n + 3);
+    Code.put(Code.load_n + 2); Code.loadConst(0); Code.put(Code.aload);
+    int okJle = Code.pc + 1; Code.putFalseJump(Code.le, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okJle);
+
+    // t = A[i]
+    Code.put(Code.load_n);      // A
+    Code.put(Code.load_n + 1);  // i
+    Code.put(Code.aload);
+    Code.put(Code.store_n + 4); // t
+
+    // A[i] = B[j]
+    Code.put(Code.load_n);      // A
+    Code.put(Code.load_n + 1);  // i
+    Code.put(Code.load_n + 2);  // B
+    Code.put(Code.load_n + 3);  // j
+    Code.put(Code.aload);       // B[j]
+    Code.put(Code.astore);
+
+    // B[j] = t
+    Code.put(Code.load_n + 2);  // B
+    Code.put(Code.load_n + 3);  // j
+    Code.put(Code.load_n + 4);  // t
+    Code.put(Code.astore);
+
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+// initSetMethods():  generateSwapBetween();
+Obj swapBetween = Tab.find("swapBetween");
+// ..., A, i, B, j
+Code.put(Code.call);
+Code.put2(swapBetween.getAdr() - Code.pc + 1);
+
+
+
+
+
+
+
+// void swapAt(set s, int i, int j)
+Obj swapAt = Tab.insert(Obj.Meth, "swapAt", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var, "s", setType).setFpPos(1);
+Tab.insert(Obj.Var, "i", Tab.intType).setFpPos(2);
+Tab.insert(Obj.Var, "j", Tab.intType).setFpPos(3);
+Tab.chainLocalSymbols(swapAt);
+Tab.closeScope();
+
+
+case "sortSet":
+    if (argumentTypes.size()!=1 || argumentTypes.get(0)!=setType)
+        report_error("sortSet(s): s je set", methodCall);
+    break;
+
+case "swapAt":
+    if (argumentTypes.size()!=3 ||
+        argumentTypes.get(0)!=setType ||
+        argumentTypes.get(1)!=Tab.intType ||
+        argumentTypes.get(2)!=Tab.intType)
+        report_error("swapAt(s,i,j): (set,int,int)", methodCall);
+    break;
+
+case "swapBetween":
+    if (argumentTypes.size()!=4 ||
+        argumentTypes.get(0)!=setType ||
+        argumentTypes.get(1)!=Tab.intType ||
+        argumentTypes.get(2)!=setType ||
+        argumentTypes.get(3)!=Tab.intType)
+        report_error("swapBetween(a,i,b,j): (set,int,set,int)", methodCall);
+    break;
+
+
+
+private static void generateSortSet() {
+    Obj sortSet = Tab.find("sortSet");
+    sortSet.setAdr(Code.pc);
+
+    // formals = 1 (s), locals = 3 (i, j, t)  => ukupno slotova 4
+    Code.put(Code.enter);
+    Code.put(1);
+    Code.put(4);
+
+    // i = 1;
+    Code.loadConst(1);
+    Code.put(Code.store_n + 1);
+
+    int L_outer = Code.pc;
+    // if (i >= s[0]) goto END;   (tj. i <= s[0]-1 ?)
+    Code.put(Code.load_n + 1);   // i
+    Code.put(Code.load_n);       // i, s
+    Code.loadConst(0);           // i, s, 0
+    Code.put(Code.aload);        // i, size
+    Code.loadConst(1);
+    Code.put(Code.sub);          // i, size-1
+    Code.putFalseJump(Code.lt, 0);
+    int J_end = Code.pc - 2;
+
+    // j = 1;
+    Code.loadConst(1);
+    Code.put(Code.store_n + 2);
+
+    int L_inner = Code.pc;
+    // if (j > s[0]-i) goto INC_I;
+    Code.put(Code.load_n + 2);   // j
+    Code.put(Code.load_n);       // j, s
+    Code.loadConst(0);
+    Code.put(Code.aload);        // j, size
+    Code.put(Code.load_n + 1);   // j, size, i
+    Code.put(Code.sub);          // j, size - i
+    Code.putFalseJump(Code.le, 0);
+    int J_inc_i = Code.pc - 2;
+
+    // if (s[j] > s[j+1]) swap
+    // a = s[j]
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 2);   // s, j
+    Code.put(Code.aload);        // s[j]
+
+    // b = s[j+1]
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 2);   // s, j
+    Code.loadConst(1);
+    Code.put(Code.add);          // s, j+1
+    Code.put(Code.aload);        // s[j+1]
+
+    // if (!(a > b)) skip
+    Code.putFalseJump(Code.gt, 0);
+    int J_skip = Code.pc - 2;
+
+    // t = s[j]
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 2);   // s, j
+    Code.put(Code.aload);        // s[j]
+    Code.put(Code.store_n + 3);  // t
+
+    // s[j] = s[j+1]
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 2);   // s, j
+    Code.put(Code.load_n);       // s, j, s
+    Code.put(Code.load_n + 2);   // s, j, s, j
+    Code.loadConst(1);
+    Code.put(Code.add);          // s, j, s, j+1
+    Code.put(Code.aload);        // s, j, s[j+1]
+    Code.put(Code.astore);
+
+    // s[j+1] = t
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 2);   // s, j
+    Code.loadConst(1);
+    Code.put(Code.add);          // s, j+1
+    Code.put(Code.load_n + 3);   // s, j+1, t
+    Code.put(Code.astore);
+
+    // skip
+    Code.fixup(J_skip);
+
+    // j++
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 2);
+    Code.putJump(L_inner);
+
+    // INC_I:
+    Code.fixup(J_inc_i);
+    Code.put(Code.load_n + 1);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 1);
+    Code.putJump(L_outer);
+
+    // END:
+    Code.fixup(J_end);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+
+
+private static void generateSwapBetween() {
+    Obj swapBetween = Tab.find("swapBetween");
+    swapBetween.setAdr(Code.pc);
+
+    Code.put(Code.enter);
+    Code.put(4); // a(0), i(1), b(2), j(3)
+    Code.put(5); // + t(4)
+
+    // Validacije: 1 <= i <= a[0], 1 <= j <= b[0]
+    // i >= 1 ?
+    Code.put(Code.load_n + 1); Code.loadConst(1);
+    int okIge1 = Code.pc + 1; Code.putFalseJump(Code.ge, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okIge1);
+
+    // i <= a[0] ?
+    Code.put(Code.load_n + 1);
+    Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    int okIle = Code.pc + 1; Code.putFalseJump(Code.le, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okIle);
+
+    // j >= 1 ?
+    Code.put(Code.load_n + 3); Code.loadConst(1);
+    int okJge1 = Code.pc + 1; Code.putFalseJump(Code.ge, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okJge1);
+
+    // j <= b[0] ?
+    Code.put(Code.load_n + 3);
+    Code.put(Code.load_n + 2); Code.loadConst(0); Code.put(Code.aload);
+    int okJle = Code.pc + 1; Code.putFalseJump(Code.le, 0);
+    Code.put(Code.trap); Code.put(2); Code.fixup(okJle);
+
+    // t = a[i]
+    Code.put(Code.load_n);      // a
+    Code.put(Code.load_n + 1);  // i
+    Code.put(Code.aload);
+    Code.put(Code.store_n + 4); // t
+
+    // a[i] = b[j]
+    Code.put(Code.load_n);      // a
+    Code.put(Code.load_n + 1);  // i
+    Code.put(Code.load_n + 2);  // b
+    Code.put(Code.load_n + 3);  // j
+    Code.put(Code.aload);       // b[j]
+    Code.put(Code.astore);      // a[i] = b[j]
+
+    // b[j] = t
+    Code.put(Code.load_n + 2);  // b
+    Code.put(Code.load_n + 3);  // j
+    Code.put(Code.load_n + 4);  // t
+    Code.put(Code.astore);
+
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+// pretpostavka: A, B, C su tipa set; x, y, z su int
+
+sortSet(A);                     // in-place sort A
+swapAcross(A, 2, B, 5);         // A[2] <-> B[5]
+
+x = subset(A, B);               // 1 ako je A⊆B
+y = equalsSet(A, B);            // 1 ako su jednaki
+z = disjoint(A, B);             // 1 ako su disjunktni
+
+symdiff(C, A, B);               // C = A △ B
+x = countEven(A);               // broj parnih u A
+y = countOdd(B);                // broj neparnih u B
+
+
+
+
+
+
+
+
+// sortSet(set s)
+Obj sortSet = Tab.insert(Obj.Meth, "sortSet", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var, "s", setType).setFpPos(1);
+Tab.chainLocalSymbols(sortSet);
+Tab.closeScope();
+
+// swapAcross(set a, int ia, set b, int ib)
+Obj swapAcross = Tab.insert(Obj.Meth, "swapAcross", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var,"a", setType).setFpPos(1);
+Tab.insert(Obj.Var,"ia", Tab.intType).setFpPos(2);
+Tab.insert(Obj.Var,"b", setType).setFpPos(3);
+Tab.insert(Obj.Var,"ib", Tab.intType).setFpPos(4);
+Tab.chainLocalSymbols(swapAcross);
+Tab.closeScope();
+
+// subset(set a, set b) -> int
+Obj subset = Tab.insert(Obj.Meth, "subset", Tab.intType);
+Tab.openScope();
+Tab.insert(Obj.Var,"a", setType).setFpPos(1);
+Tab.insert(Obj.Var,"b", setType).setFpPos(2);
+Tab.chainLocalSymbols(subset);
+Tab.closeScope();
+
+// equalsSet(set a, set b) -> int
+Obj equalsSet = Tab.insert(Obj.Meth, "equalsSet", Tab.intType);
+Tab.openScope();
+Tab.insert(Obj.Var,"a", setType).setFpPos(1);
+Tab.insert(Obj.Var,"b", setType).setFpPos(2);
+Tab.chainLocalSymbols(equalsSet);
+Tab.closeScope();
+
+// disjoint(set a, set b) -> int
+Obj disjoint = Tab.insert(Obj.Meth, "disjoint", Tab.intType);
+Tab.openScope();
+Tab.insert(Obj.Var,"a", setType).setFpPos(1);
+Tab.insert(Obj.Var,"b", setType).setFpPos(2);
+Tab.chainLocalSymbols(disjoint);
+Tab.closeScope();
+
+// symdiff(set out, set a, set b)
+Obj symdiff = Tab.insert(Obj.Meth, "symdiff", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var,"out", setType).setFpPos(1);
+Tab.insert(Obj.Var,"a",   setType).setFpPos(2);
+Tab.insert(Obj.Var,"b",   setType).setFpPos(3);
+Tab.chainLocalSymbols(symdiff);
+Tab.closeScope();
+
+// countEven(countOdd): int count*(set s)
+Obj countEven = Tab.insert(Obj.Meth, "countEven", Tab.intType);
+Tab.openScope();
+Tab.insert(Obj.Var,"s", setType).setFpPos(1);
+Tab.chainLocalSymbols(countEven);
+Tab.closeScope();
+
+Obj countOdd = Tab.insert(Obj.Meth, "countOdd", Tab.intType);
+Tab.openScope();
+Tab.insert(Obj.Var,"s", setType).setFpPos(1);
+Tab.chainLocalSymbols(countOdd);
+Tab.closeScope();
+
+
+
+private static void generateSubset() {
+    Obj f = Tab.find("subset");
+    Obj contains = Tab.find("contains");
+    f.setAdr(Code.pc);
+
+    Code.put(Code.enter); Code.put(2); Code.put(3); // a,b ; i
+
+    // i = 1
+    Code.loadConst(1); Code.put(Code.store_n + 2);
+    int loop = Code.pc;
+    // if (i > a[0]) return 1;
+    Code.put(Code.load_n + 2); Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    Code.putFalseJump(Code.le, 0); int jRet1 = Code.pc - 2;
+    // elem = a[i]; if (!contains(b, elem)) return 0;
+    Code.put(Code.load_n + 1);              // b
+    Code.put(Code.load_n); Code.put(Code.load_n + 2); Code.put(Code.aload); // elem
+    Code.put(Code.call); Code.put2(contains.getAdr() - Code.pc + 1);
+    Code.loadConst(0); Code.putFalseJump(Code.ne, 0); int jCont = Code.pc - 2; // ako ==0 -> nije podskup
+    Code.loadConst(0); Code.put(Code.exit); Code.put(Code.return_); // return 0
+
+    Code.fixup(jCont);
+    // i++
+    Code.put(Code.load_n + 2); Code.loadConst(1); Code.put(Code.add); Code.put(Code.store_n + 2);
+    Code.putJump(loop);
+
+    Code.fixup(jRet1);
+    Code.loadConst(1); Code.put(Code.exit); Code.put(Code.return_);
+}
+
+
+private static void generateEqualsSet() {
+    Obj f = Tab.find("equalsSet");
+    Obj subset = Tab.find("subset");
+    f.setAdr(Code.pc);
+
+    Code.put(Code.enter); Code.put(2); Code.put(2); // a,b
+
+    // if (a[0] != b[0]) return 0;
+    Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    Code.put(Code.load_n + 1); Code.loadConst(0); Code.put(Code.aload);
+    Code.putFalseJump(Code.eq, 0); int jNotEq = Code.pc - 2;
+    // return 0
+    Code.loadConst(0); Code.put(Code.exit); Code.put(Code.return_);
+
+    // sizes equal -> return subset(a,b)
+    Code.fixup(jNotEq);
+    Code.put(Code.load_n); Code.put(Code.load_n + 1);
+    Code.put(Code.call); Code.put2(subset.getAdr() - Code.pc + 1);
+    Code.put(Code.exit); Code.put(Code.return_);
+}
+
+
+
+
+
+private static void generateDisjoint() {
+    Obj f = Tab.find("disjoint");
+    Obj contains = Tab.find("contains");
+    f.setAdr(Code.pc);
+
+    Code.put(Code.enter); Code.put(2); Code.put(3); // a,b ; i
+    Code.loadConst(1); Code.put(Code.store_n + 2); // i=1
+    int L = Code.pc;
+
+    // if (i > a[0]) return 1;
+    Code.put(Code.load_n + 2); Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    Code.putFalseJump(Code.le, 0); int J_ret1 = Code.pc - 2;
+
+    // if (contains(b, a[i]) != 0) return 0;
+    Code.put(Code.load_n + 1);
+    Code.put(Code.load_n); Code.put(Code.load_n + 2); Code.put(Code.aload);
+    Code.put(Code.call); Code.put2(contains.getAdr() - Code.pc + 1);
+    Code.loadConst(0); Code.putFalseJump(Code.eq, 0); int J_cont = Code.pc - 2;
+    Code.loadConst(0); Code.put(Code.exit); Code.put(Code.return_);
+
+    Code.fixup(J_cont);
+    Code.put(Code.load_n + 2); Code.loadConst(1); Code.put(Code.add); Code.put(Code.store_n + 2);
+    Code.putJump(L);
+
+    Code.fixup(J_ret1);
+    Code.loadConst(1); Code.put(Code.exit); Code.put(Code.return_);
+}
+
+
+
+
+
+
+
+private static void generateCountEven() {
+    Obj f = Tab.find("countEven");
+    f.setAdr(Code.pc);
+
+    Code.put(Code.enter); Code.put(1); Code.put(3); // s ; i,cnt
+    Code.loadConst(0); Code.put(Code.store_n + 2); // cnt = 0
+    Code.loadConst(1); Code.put(Code.store_n + 1); // i = 1
+    int L = Code.pc;
+
+    Code.put(Code.load_n + 1); Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    Code.putFalseJump(Code.le, 0); int Jend = Code.pc - 2;
+
+    // if (s[i] % 2 == 0) cnt++
+    Code.put(Code.load_n); Code.put(Code.load_n + 1); Code.put(Code.aload);
+    Code.loadConst(2); Code.put(Code.rem);
+    Code.loadConst(0); Code.putFalseJump(Code.eq, 0); int Jskip = Code.pc - 2;
+    Code.put(Code.load_n + 2); Code.loadConst(1); Code.put(Code.add); Code.put(Code.store_n + 2);
+    Code.fixup(Jskip);
+
+    // i++
+    Code.put(Code.load_n + 1); Code.loadConst(1); Code.put(Code.add); Code.put(Code.store_n + 1);
+    Code.putJump(L);
+
+    Code.fixup(Jend);
+    Code.put(Code.load_n + 2); Code.put(Code.exit); Code.put(Code.return_);
+}
+
+private static void generateCountOdd() {
+    Obj f = Tab.find("countOdd");
+    f.setAdr(Code.pc);
+
+    Code.put(Code.enter); Code.put(1); Code.put(3); // s ; i,cnt
+    Code.loadConst(0); Code.put(Code.store_n + 2); // cnt = 0
+    Code.loadConst(1); Code.put(Code.store_n + 1); // i = 1
+    int L = Code.pc;
+
+    Code.put(Code.load_n + 1); Code.put(Code.load_n); Code.loadConst(0); Code.put(Code.aload);
+    Code.putFalseJump(Code.le, 0); int Jend = Code.pc - 2;
+
+    // if (s[i] % 2 != 0) cnt++
+    Code.put(Code.load_n); Code.put(Code.load_n + 1); Code.put(Code.aload);
+    Code.loadConst(2); Code.put(Code.rem);
+    Code.loadConst(0); Code.putFalseJump(Code.ne, 0); int Jskip = Code.pc - 2;
+    Code.put(Code.load_n + 2); Code.loadConst(1); Code.put(Code.add); Code.put(Code.store_n + 2);
+    Code.fixup(Jskip);
+
+    Code.put(Code.load_n + 1); Code.loadConst(1); Code.put(Code.add); Code.put(Code.store_n + 1);
+    Code.putJump(L);
+
+    Code.fixup(Jend);
+    Code.put(Code.load_n + 2); Code.put(Code.exit); Code.put(Code.return_);
+}
+
+
+
+
+
+
+private static void generateSymDiff() {
+    Obj symDiff = Tab.find("symDiff");
+    symDiff.setAdr(Code.pc);
+
+    // formals: out(0), a(1), b(2)
+    // locals frame: out,a,b + t1(3), t2(4)
+    Code.put(Code.enter);
+    Code.put(3);  // #formals
+    Code.put(5);  // ukupno slotova (formali + lokali)
+
+    // --- t1 = new int[len(a)] ; t1[0]=0
+    Code.put(Code.load_n + 1);     // a
+    Code.put(Code.arraylength);    // len(a)
+    Code.put(Code.newarray); Code.put(1); // int[]
+    Code.put(Code.store_n + 3);    // t1
+    Code.put(Code.load_n + 3); Code.loadConst(0); Code.loadConst(0); Code.put(Code.astore);
+
+    // --- t2 = new int[len(b)] ; t2[0]=0
+    Code.put(Code.load_n + 2);     // b
+    Code.put(Code.arraylength);
+    Code.put(Code.newarray); Code.put(1);
+    Code.put(Code.store_n + 4);    // t2
+    Code.put(Code.load_n + 4); Code.loadConst(0); Code.loadConst(0); Code.put(Code.astore);
+
+    // addresses (pretpostavka: imaš callable metode; vidi B) ako nema)
+    Obj difference = Tab.find("difference");
+    Obj union      = Tab.find("union");
+    Obj addAll     = Tab.find("addAll");
+
+    // t1 = difference(a, b)  -> difference(t1, a, b)
+    Code.put(Code.load_n + 3); // t1
+    Code.put(Code.load_n + 1); // a
+    Code.put(Code.load_n + 2); // b
+    Code.put(Code.call); Code.put2(difference.getAdr() - Code.pc + 1);
+
+    // t2 = difference(b, a)  -> difference(t2, b, a)
+    Code.put(Code.load_n + 4); // t2
+    Code.put(Code.load_n + 2); // b
+    Code.put(Code.load_n + 1); // a
+    Code.put(Code.call); Code.put2(difference.getAdr() - Code.pc + 1);
+
+    // out = union(t1, t2)    -> out[0]=0 ; addAll(out, t1); addAll(out, t2)  (ili pozovi union ako ga imaš)
+    // out[0]=0
+    Code.put(Code.load_n); Code.loadConst(0); Code.loadConst(0); Code.put(Code.astore);
+
+    // addAll(out, t1)
+    Code.put(Code.load_n);     // out
+    Code.put(Code.load_n + 3); // t1
+    Code.put(Code.call); Code.put2(addAll.getAdr() - Code.pc + 1);
+
+    // addAll(out, t2)
+    Code.put(Code.load_n);     // out
+    Code.put(Code.load_n + 4); // t2
+    Code.put(Code.call); Code.put2(addAll.getAdr() - Code.pc + 1);
+
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+
+
+
+if (n.getSetop() instanceof SetopSymdiff) {
+    Obj add      = Tab.find("add");
+    Obj contains = Tab.find("contains");
+
+    // target = Ø
+    Code.load(target);
+    Code.loadConst(0);
+    Code.loadConst(0);
+    Code.put(Code.astore);
+
+    // Δ = (left \ right) ∪ (right \ left)
+    genDiffElems(target, left,  right, add, contains);  // left minus right -> target
+    genDiffElems(target, right, left,  add, contains);  // right minus left -> target
+    return;
+}
+
+
+
+
+
+private void genDiffElems(Obj target, Obj left, Obj right, Obj add, Obj contains) {
+    // i = 1
+    Code.loadConst(1);                // [ i ]
+    int L_loop = Code.pc;
+
+    // if (!(i <= left[0])) break;
+    Code.put(Code.dup);               // i, i
+    Code.load(left);                  // i, i, left
+    Code.loadConst(0);                // i, i, left, 0
+    Code.put(Code.aload);             // i, i, sizeL
+    Code.putFalseJump(Code.le, 0);    // skok kada i > sizeL
+    int L_end = Code.pc - 2;          // [ i ]
+
+    // elem = left[i]    (sačuvaj i na steku)
+    Code.put(Code.dup);               // i, i
+    Code.load(left);                  // i, i, left
+    Code.put(Code.dup_x1); Code.put(Code.pop); // i, left, i
+    Code.put(Code.aload);             // i, elem
+
+    // res = contains(right, elem)
+    Code.load(right);                 // i, elem, right
+    Code.put(Code.dup_x1); Code.put(Code.pop); // i, right, elem
+    Code.put(Code.call);
+    Code.put2(contains.getAdr() - Code.pc + 1); // i, res
+
+    // if (res != 0) skip add
+    Code.loadConst(0);                // i, res, 0
+    Code.putFalseJump(Code.eq, 0);    // skok ako res != 0
+    int L_skip = Code.pc - 2;         // [ i ]
+
+    // add(target, left[i])  (ponovo dohvati elem)
+    Code.put(Code.dup);               // i, i
+    Code.load(left);                  // i, i, left
+    Code.put(Code.dup_x1); Code.put(Code.pop); // i, left, i
+    Code.put(Code.aload);             // i, elem
+    Code.load(target);                // i, elem, target
+    Code.put(Code.dup_x1); Code.put(Code.pop); // i, target, elem
+    Code.put(Code.call);
+    Code.put2(add.getAdr() - Code.pc + 1);     // [ i ]
+
+    // skip:
+    Code.fixup(L_skip);
+
+    // i++
+    Code.loadConst(1);
+    Code.put(Code.add);               // i+1
+    Code.putJump(L_loop);
+
+    // kraj
+    Code.fixup(L_end);
+    Code.put(Code.pop);               // skini i
+}
+
+
+
+
+
+
+
+private static void generateDisjoint() {
+    Obj disj      = Tab.find("disjoint");
+    Obj contains  = Tab.find("contains");  // int contains(set,int)
+
+    disj.setAdr(Code.pc);
+
+    // formals = 2 (A,B), locals = 3 (A,B,i)
+    Code.put(Code.enter);
+    Code.put(2);
+    Code.put(3);
+
+    // i = 1
+    Code.loadConst(1);
+    Code.put(Code.store_n + 2); // i
+
+    int L_loop = Code.pc;
+
+    // if (i > A[0]) return 1;
+    Code.put(Code.load_n + 2);  // i
+    Code.put(Code.load_n);      // A
+    Code.loadConst(0);
+    Code.put(Code.aload);       // sizeA
+    Code.putFalseJump(Code.le, 0);
+    int J_ret1 = Code.pc - 2;   // skok kad i > sizeA
+    // (nakon fixup-a ide return 1)
+
+    // elem = A[i]
+    Code.put(Code.load_n);      // A
+    Code.put(Code.load_n + 2);  // i
+    Code.put(Code.aload);       // elem
+
+    // if (contains(B, elem) != 0) return 0;
+    Code.put(Code.load_n + 1);  // B
+    Code.put(Code.dup_x1); Code.put(Code.pop);  // B, elem (red: set,int)
+    Code.put(Code.call);
+    Code.put2(contains.getAdr() - Code.pc + 1);
+    Code.loadConst(0);
+    Code.putFalseJump(Code.ne, 0);
+    int J_ret0 = Code.pc - 2;   // skok kad je != 0 (naći će se element)
+
+    // i++
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 2);
+    Code.putJump(L_loop);
+
+    // -> return 1 (disjunktni)
+    Code.fixup(J_ret1);
+    Code.loadConst(1);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+
+    // -> return 0 (nisu disjunktni)
+    Code.fixup(J_ret0);
+    Code.loadConst(0);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Factor ::=
+    /* ... postojeće ... */
+  | (SupersetOp) DesignatorName SUPERSET DesignatorName
+  ;
+
+
+public void visit(SupersetOp n) {
+    Obj A = n.getDesignatorName().obj;      // levo: A
+    Obj B = n.getDesignatorName1().obj;     // desno: B
+    Obj contains = Tab.find("contains");    // int contains(set,int)
+
+    // i = 1 (držimo i na steku tokom petlje)
+    Code.loadConst(1);                         // [ i ]
+
+    int L_loop = Code.pc;
+
+    // if (i <= B[0]) continue else goto TRUE_END
+    Code.put(Code.dup);                        // [ i, i ]
+    Code.load(B);                              // [ i, i, B ]
+    Code.loadConst(0);                         // [ i, i, B, 0 ]
+    Code.put(Code.aload);                      // [ i, i, sizeB ]
+    Code.putFalseJump(Code.le, 0);             // skok kad i > sizeB
+    int J_trueEnd = Code.pc - 2;               // fix kasnije; stack: [ i ]
+
+    // elem = B[i]   (ne troši i)
+    Code.put(Code.dup);                        // [ i, i ]
+    Code.load(B);                              // [ i, i, B ]
+    Code.put(Code.dup_x1); Code.put(Code.pop);// [ i, B, i ]
+    Code.put(Code.aload);                      // [ i, elem ]
+
+    // res = contains(A, elem)
+    Code.load(A);                              // [ i, elem, A ]
+    Code.put(Code.dup_x1); Code.put(Code.pop);// [ i, A, elem ]
+    Code.put(Code.call);
+    Code.put2(contains.getAdr() - Code.pc + 1);// [ i, res ]
+
+    // if (res == 0) -> return 0
+    Code.loadConst(0);                         // [ i, res, 0 ]
+    Code.putFalseJump(Code.ne, 0);             // skok ako res != 0 (tj. elem je u A)
+    int J_false = Code.pc - 2;                 // fix kasnije; stack: [ i ]
+    // ovde je res == 0: nije superset -> vrednost false
+    Code.put(Code.pop);                        // skini i
+    Code.loadConst(0);                         // [ 0 ]
+    return; // kao izraz – ostaje 0 na steku
+
+    // continue: i++
+    Code.fixup(J_false);
+    Code.loadConst(1);                         // [ i, 1 ]
+    Code.put(Code.add);                        // [ i+1 ]
+    Code.putJump(L_loop);
+
+    // kraj: superset je tačan -> vrati 1
+    Code.fixup(J_trueEnd);
+    Code.put(Code.pop);                        // skini i
+    Code.loadConst(1);                         // [ 1 ]
+}
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,20 @@
+program test4
+
+	const int tri = 3;
+
+	int niz[];
+	int matrica[][];
+
+{
+	void main()
+	{
+		niz = new int[5];
+		matrica = new int[3][3];
+		matrica[1][1] = tri;
+		niz[0] = matrica[1][1];
+		print(niz[0]);  // Očekivani izlaz: 3
+	}
+}
+
+
+//java -jar .jar test1.mj >test1.out 2>test1.err

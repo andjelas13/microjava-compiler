@@ -1,0 +1,352 @@
+package rs.ac.bg.etf.pp1;
+
+import java_cup.runtime.*;
+import org.apache.log4j.*;
+import rs.ac.bg.etf.pp1.ast.*;
+
+parser code {:
+
+
+
+
+    Logger log = Logger.getLogger(getClass());
+    boolean errorDetected = false;
+
+    private Symbol lastToken = null;
+ 
+
+    public void report_fatal_error(String message, Object info) throws java.lang.Exception {
+        done_parsing();
+        report_error(message, info);
+    }
+
+    public void syntax_error(Symbol cur_token) {
+        report_error("\nSintaksna greska", cur_token);
+    }
+
+    public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
+        report_fatal_error("Fatalna greska, parsiranje se ne moze nastaviti", cur_token);
+    }
+
+    public void report_error(String message, Object info) {
+        errorDetected = true;
+
+        StringBuilder msg = new StringBuilder(message);
+        Integer line = null;
+        if (info instanceof Symbol) {
+            line = ((Symbol) info).left;
+        } else if (lastToken != null) {
+            line = lastToken.left; 
+        }
+
+        if (line != null) msg.append(" na liniji ").append(line);
+        log.error(msg.toString());
+}
+
+:}
+
+init with {:
+    errorDetected = false;
+:}
+
+scan with {:
+    Symbol s = this.getScanner().next_token();
+    lastToken = s; 
+    if (s != null && s.value != null)
+        log.info(s.toString() + " " + s.value.toString());
+    return s;
+:}
+
+
+
+
+// Terminals
+terminal PROG, CONST, NEW, PRINT, READ, RETURN, VOID, BREAK, CONTINUE, FOR, STATIC, NAMESPACE, CLASS, EXTENDS, ELSE, IF;
+terminal String IDENT;
+terminal Integer INT;
+terminal Character CHAR;
+terminal Boolean BOOL;
+terminal PLUS, MINUS, MUL, DIV, MOD, EQ, NEQ, GT, GEQ, LT, LEQ, AND, OR, EQUAL, INC, DEC, HASH;
+terminal SEMI, DCOLON, COLON, COMMA, DOT, LPAREN, RPAREN, LANGLE, RANGLE, LBRACE, RBRACE, LBRACKET, RBRACKET, LAMBDA, HASHHASH;
+terminal UNION;
+terminal INTERSECT;
+terminal DIFFERENCE;
+terminal MINOP;
+terminal MAXOP;
+terminal REMOVE;
+terminal IN;
+//Neterminali 
+
+nonterminal ProgramBody;
+nonterminal NamespaceList;
+nonterminal DeclList;
+nonterminal ConstDecl;
+nonterminal VarDecl;
+nonterminal ConstDeclList;
+nonterminal SingleDecl;
+nonterminal MoreDeclList;
+nonterminal MoreNamespaceList;
+nonterminal MoreMethodDeclList;
+nonterminal VarDeclList;
+
+nonterminal BracketList;
+nonterminal FormPars;
+nonterminal MoreVarDeclList;
+nonterminal StatementList;
+
+nonterminal Statement;
+nonterminal MoreFormParsList;
+nonterminal FormPar;
+nonterminal ScopedIdentList;
+nonterminal MorePrintOpt;
+
+nonterminal DesignatorList;
+nonterminal Assignop;
+
+nonterminal ActPars, ActParsOpt;
+nonterminal DummyMatrix;
+nonterminal DummyMatrix2;
+nonterminal Setop;
+nonterminal Label;
+nonterminal Relop;
+nonterminal Addop;
+nonterminal Mulop;
+nonterminal Remop;
+nonterminal BracketExprList;
+nonterminal AssignTail;
+nonterminal FormBracketList;
+nonterminal MethodDeclList;
+nonterminal Program;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj  ConstList, VarItem, MethodName, ReturnType, ProgName,  MethodSignature,  Designator,  DesignatorStatement, DesignatorName;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct  Type, Expr, Term, Factor, ArrayOpt;
+
+// Productions
+Program ::= (Program) PROG ProgName:p ProgramBody;
+
+ProgName ::= (ProgName) IDENT:progName ;
+
+
+ProgramBody ::= (ProgramBody) MoreNamespaceList MoreDeclList LBRACE MoreMethodDeclList RBRACE;
+
+
+MoreNamespaceList ::= (MoreNamespaceLists) MoreNamespaceList NamespaceList
+				| (NoMoreNamespaceList)/* epsilon */;
+
+NamespaceList ::= (Namespace) NAMESPACE IDENT LBRACE MoreDeclList LBRACE MoreMethodDeclList RBRACE RBRACE;
+                 
+
+MoreDeclList ::= (MoreDeclLists) MoreDeclList DeclList
+				|(NoMoreDeclList) /* epsilon */;
+				
+				
+MoreMethodDeclList ::= (MoreMethodDeclLists) MoreMethodDeclList MethodDeclList
+				|(NoMoreMethodDeclList)/* epsilon */ ;
+
+DeclList ::= (DeclConstList) ConstDecl 
+				| (DeclVarList) VarDecl
+				 | (ErrDeclToSemi) error SEMI:s
+    {: parser.report_error("Izvrsen oporavak u deklaraciji  do ';'", s); :}
+				
+    ;
+           
+	
+	
+	
+ConstDecl ::= (ConstDecls) CONST Type ConstDeclList SEMI;
+  
+
+ConstDeclList ::= (MoreDeclConst) ConstDeclList COMMA SingleDecl 
+				|(SingleDeclConst) SingleDecl 
+				| (ErrorConstItemAfterComma) ConstDeclList COMMA error
+    {: parser.report_error("Izvrsen oporavak u listi konstanti do ','", null); :}
+  ;
+
+SingleDecl ::= (SingleDecl) IDENT:name EQUAL ConstList  ;
+
+
+ConstList ::= (NumConst) INT 
+			| (CharConst) CHAR
+			|(BoolConst) BOOL;
+
+
+VarDeclList ::= (SingleVarDeclLabel) VarItem
+              | (MultipleVarDeclLabel) VarDeclList COMMA VarItem:varItem
+              |(ErrorVarComa) error COMMA VarItem:varItem
+                {: parser.report_error("Izvrsen oporavak kod deklaracije promenljive do ,", null); :}
+           | (ErrorVarItemAfterComma) VarDeclList COMMA error
+      {: parser.report_error("Izvrsen oporavak u listi promenljivih do ','", null); :}
+  ;
+            
+
+BracketList ::= (SingleBracketLabel) LBRACKET RBRACKET
+				| (MatrixBracketLabel) LBRACKET RBRACKET LBRACKET RBRACKET
+              | (NoBracketLabel) /* epsilon */;
+
+VarDecl ::= (VarDeclVar) Type VarDeclList SEMI
+| (ErrVarDeclToSemi) Type error SEMI:s
+    {: parser.report_error("Izvrsen oporavak kod deklaracije promenljivih do ';'", s); :}
+  
+;
+
+VarItem ::= (VarItem) IDENT:varName BracketList;
+
+
+
+Type ::= (Types) ScopedIdentList IDENT:typeName
+			|(SingleType) IDENT:typeName;
+
+ScopedIdentList ::= (SingleScopedIdentLabel) IDENT DCOLON;
+
+MethodSignature ::= (MethodSignature) ReturnType:type MethodName:name LPAREN MoreFormParsList RPAREN;
+
+MethodDeclList ::= (MethodDeclList) MethodSignature MoreVarDeclList LBRACE StatementList RBRACE;
+
+MethodName ::= (MethodName) IDENT;
+
+ReturnType ::= (ReturnTypeLabel) Type
+             | (VoidReturnLabel) VOID;
+
+MoreFormParsList ::= (MoreFormParsListLabel) FormPars
+               | (NoMoreFormPars)/* epsilon */;
+              
+
+MoreVarDeclList ::= (VarDeclListLabel) MoreVarDeclList VarDecl
+              | (EmptyVarDeclListLabel)/* epsilon */
+  ;
+
+
+StatementList ::= (StatementListLabel) StatementList Statement
+                | (EmptyStatementListLabel)/* epsilon */;
+               
+
+FormPars ::= (SingleFormParLabel) FormPar
+              | (MultipleFormParLabel) FormPars COMMA FormPar;
+
+FormPar ::= (FormPar) Type IDENT FormBracketList;
+
+FormBracketList ::= (FormBracketLabel) LBRACKET RBRACKET
+				 | (NoFormBracketLabel) /* epsilon */;
+
+Statement ::= (DesignatorStatementLabel) DesignatorStatement SEMI
+            | (ReadStatementLabel) READ LPAREN Designator:designator RPAREN SEMI
+            | (PrintStatementLabel) PRINT LPAREN Expr:expr MorePrintOpt RPAREN SEMI
+            | (ReturnStatement) RETURN Expr SEMI
+            | (NoReturnStatement) RETURN SEMI 
+            | (Swapniz) DesignatorName HASH Expr COMMA Expr HASH SEMI 
+             | (StmtErrToSemi) error SEMI:s
+    {: parser.report_error("Oporavak naredbe do ';'", s); :}
+  ;
+           
+         
+MorePrintOpt ::= (MorePrintLabel)  COMMA INT
+			| (NoMorePrintOpt)/* epsilon */;
+
+
+
+DesignatorStatement ::= (DesignatorStatements) Designator:designator DesignatorList:list
+                       ;
+
+DesignatorList ::= (AssignDesignatorLabel) Assignop AssignTail
+                      | (IncrementDesignatorLabel) INC
+                      | (DecrementDesignatorLabel) DEC
+                      | (MethodCallDesignatorLabel) LPAREN ActParsOpt RPAREN     
+                     
+                   ;
+                      
+                      
+ActParsOpt ::= (ActParsPresent) ActPars
+             | (NoActPars) /* epsilon */;
+
+
+                      
+
+Assignop ::= (Assignop) EQUAL;
+
+ 
+AssignTail ::= (AssignExprLabel) Expr:expr
+             | (AssignSetopLabel) Designator Setop Designator
+                 | (AssignRemD) Designator Remop Designator
+                     | (AssignRemInt) Designator Remop INT
+             | (AssignErr) error
+    {: parser.report_error("Izvrsen oporavak u dodeli do ';'", null); :}
+  ; 
+   
+
+
+
+Expr ::= (NegativeExpr) MINUS Term:t
+       | (MultipleExpr) Expr Addop Term
+       | (SingleExpr) Term;
+
+Term ::= (SingleTerms) Factor
+       | (MultipleTerms) Term Mulop Factor;
+
+   
+
+Factor ::= (NumConstLabel) INT
+         | (CharConstLabel) CHAR
+         | (ExprInParensLabel) LPAREN Expr RPAREN
+         | (BoolConstLabel) BOOL
+         | (DesignatorLabel) Designator
+         | (MethodCallExpr) DesignatorName:name LPAREN ActParsOpt RPAREN
+         | (NewArrayLabel) NEW Type LBRACKET Expr RBRACKET BracketExprList
+         | (PrintMatrica) HASH DesignatorName LPAREN Expr COMMA Expr RPAREN 
+         | (PrintHash) HASHHASH DesignatorName
+         | (ElemInSetDesignator) Designator IN DesignatorName
+          | (MinSetOp) MINOP DesignatorName
+        | (MaxSetOp) MAXOP DesignatorName
+    ;
+        
+  
+BracketExprList ::= (AdditionalDimLabel) LBRACKET Expr RBRACKET BracketExprList
+                  | (NoAdditionalDimLabel)/* epsilon */;
+
+
+Designator ::= (ScopedDesignatorLabel) ScopedIdentList IDENT:ident ArrayOpt:arrayopt
+             | (ArrayAccessLabel) DesignatorName:name LBRACKET Expr RBRACKET
+             |(MatrixArray) DesignatorName:name LBRACKET Expr RBRACKET DummyMatrix LBRACKET Expr  DummyMatrix2 RBRACKET 
+             |(DesignatorNames) DesignatorName:name ;
+           
+
+
+DummyMatrix ::= (DummyMatrix); 
+  
+DummyMatrix2 ::= (DummyMatrix2);           
+DesignatorName ::= (DesignatorName) IDENT;
+
+ArrayOpt ::= (ArrayAccessLabels) LBRACKET Expr RBRACKET
+			| (MatrixArrays) LBRACKET Expr RBRACKET LBRACKET Expr RBRACKET
+            | (NoArrayAccessLabels)/* epsilon */;
+           
+Label ::= (Label) IDENT;        
+           
+           
+           
+Relop ::= (EqualsLabel) EQ
+        | (NotEqualsLabel) NEQ
+        | (GreaterLabel) GT
+        | (GreaterEqualLabel) GEQ
+        | (LessLabel) LT
+        | (LessEqualLabel) LEQ;
+        
+        
+        
+        
+Addop ::= (PlusLabel) PLUS
+        | (MinusLabel) MINUS;
+
+Mulop ::= (MultiplyLabel) MUL
+        | (DivideLabel) DIV
+        | (ModuloLabel) MOD;
+        
+Remop ::= (Remop) REMOVE;
+              
+        
+        
+Setop ::= (SetopUnion) UNION  
+        | (SetopInter) INTERSECT
+       | (SetopDiffer)  DIFFERENCE;
+        
+ActPars ::= (SingleActParLabel) Expr
+          | (MultipleActParsLabel) ActPars COMMA Expr;
+

@@ -1,0 +1,8 @@
+﻿bin/
+*.class
+logs/
+*.obj
+.settings/
+.idea/
+.DS_Store
+

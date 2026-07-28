@@ -1,0 +1,17 @@
+program testA_recovery
+
+const int nula = 0;
+int;        // očekujem poruku (globalno)
+int a;
+
+{
+    void main()
+ 
+       
+    {
+        a = ; // očekujem poruku dodela — do ';'
+        a = 42;
+        print(a);
+    }
+}
+

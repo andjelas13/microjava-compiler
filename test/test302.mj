@@ -1,0 +1,488 @@
+// void addRange(set S, int from, int to)
+Obj addRange = Tab.insert(Obj.Meth, "addRange", Tab.noType);
+Tab.openScope();
+Tab.insert(Obj.Var, "S", setType);
+Tab.insert(Obj.Var, "from", Tab.intType);
+Tab.insert(Obj.Var, "to", Tab.intType);
+addRange.setLevel(1);
+Tab.closeScope();
+addRange.setAdr(Code.pc);   // odmah posle ovoga ide emit tela
+
+emitAddRangeBody();         // (vidi dole)
+
+
+
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+  <classpathentry kind="src" path="src"/>
+  <classpathentry kind="src" path="spec"/>
+  <classpathentry kind="src" path="test"/>
+  <classpathentry kind="src" path="config"/>
+
+  <!-- Fiksirano na Java 8 (EE) -->
+  <classpathentry kind="con"
+    path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
+
+  <!-- Jar-ovi relativno iz lib/ -->
+  <classpathentry kind="lib" path="lib/cup_v10k.jar"/>
+  <classpathentry kind="lib" path="lib/JFlex.jar"/>
+  <classpathentry kind="lib" path="lib/log4j-1.2.17.jar"/>
+  <classpathentry kind="lib" path="lib/mj-runtime-1.1.jar"/>
+  <classpathentry kind="lib" path="lib/symboltable-1-1.jar"/>
+
+  <classpathentry kind="output" path="bin"/>
+</classpath>
+
+
+
+private void emitAddRangeBody() {
+    //load_0=S, load_1=from, load_2=to)
+
+    Code.enter(1, 3); // 
+
+    // if (from > to) trap(3)
+    Code.load_1();          // from
+    Code.load_2();          // to
+    int okRange = Code.pc + 1;
+    Code.putFalseJump(Code.le, 0); // from <= to ? ok : trap
+    genTrap(3);
+    Code.fixup(okRange);
+
+    // size = S[0]
+    Code.load_0(); Code.loadConst(0); Code.put(Code.aload); // size
+
+    // cap = len(S) - 1
+    Code.load_0(); Code.put(Code.arraylength);
+    Code.loadConst(1); Code.put(Code.sub); // cap
+
+    // need = 0
+    Code.loadConst(0); //
+
+    // i = from
+    Code.load_1();
+
+    int loopCount = Code.pc;
+    // uslov: i <= to ?
+    Code.load_2();
+    int jmpEndCount = Code.pc + 1;
+    Code.putFalseJump(Code.gt, 0); // ako i > to -> kraj brojanja
+
+    // if (!contains(S, i)) need++
+    Code.load_0(); // S
+    Code.load_3(); //
+
+    // Najčistije: prebaci need i i u lok. promenljive, pa ovde:
+    //   Code.load_0();       // S
+    //   Code.load(iLoc);     // i
+    //   call contains
+    Code.put(Code.call); Code.put2(Tab.find("contains").getAdr() - Code.pc + 1);
+
+    int skipNeedInc = Code.pc + 1;
+    Code.putFalseJump(Code.ne, 0);  // ako je contains==0 (false) ->  need++ (znači skok ako != true)
+    Code.put(Code.const_1);
+    Code.put(Code.add);
+    Code.fixup(skipNeedInc);
+
+    // i++
+    Code.loadConst(1); Code.put(Code.add);
+
+    Code.putJump(loopCount);
+    Code.fixup(jmpEndCount);
+
+    // kapacitet: (size + need) <= cap ?
+    // stack: size, cap, need  
+    // želimo: size+need <= cap
+    Code.put(Code.add);     // (size + need)
+    int okCap = Code.pc + 1;
+    Code.putFalseJump(Code.le, 0);
+    genTrap(1);
+    Code.fixup(okCap);
+
+    // 2. prolaz: i=from..to: if(!contains) add(S, i)
+    Code.load_1(); // i = from
+
+    int loopAdd = Code.pc;
+    Code.load_2(); // to
+    int endAdd = Code.pc + 1;
+    Code.putFalseJump(Code.gt, 0);
+
+    // if (!contains(S,i)) add(S,i)
+    Code.load_0(); // S
+    Code.load_3(); // i
+    Code.put(Code.call); Code.put2(Tab.find("contains").getAdr() - Code.pc + 1);
+
+    int skipAdd = Code.pc + 1;
+    Code.putFalseJump(Code.ne, 0); // ako nije u setu
+    // add(S, i)
+    Code.load_0(); // S
+    Code.load_3(); // i
+    Code.put(Code.call); Code.put2(Tab.find("add").getAdr() - Code.pc + 1);
+    Code.fixup(skipAdd);
+
+    // i++
+    Code.loadConst(1); Code.put(Code.add);
+
+    Code.putJump(loopAdd);
+    Code.fixup(endAdd);
+
+    Code.exit();
+    Code.return_;
+}
+private static void generateRemove() {
+    Obj rem = Tab.find("remove");
+    rem.setAdr(Code.pc);
+
+    Code.put(Code.enter);
+    Code.put(2); // formali: s, e
+    Code.put(3); // lokali:  s, e, i
+
+    // i = 1
+    Code.loadConst(1);
+    Code.put(Code.store_n + 2);
+
+    int loop = Code.pc;
+    // while (i <= s[0]) ...
+    Code.put(Code.load_n + 2); // i
+    Code.put(Code.load_n);     // s
+    Code.loadConst(0);
+    Code.put(Code.aload);      // size
+    Code.putFalseJump(Code.le, 0);
+    int jNotFound = Code.pc - 2;
+
+    // if (s[i] == e) found
+    Code.put(Code.load_n);     // s
+    Code.put(Code.load_n + 2); // i
+    Code.put(Code.aload);      // s[i]
+    Code.put(Code.load_n + 1); // e
+    Code.putFalseJump(Code.eq, 0);
+    int jContinue = Code.pc - 2;
+
+    // --- shift left from i ---
+    int shift = Code.pc;
+    // while (i < s[0]) { s[i] = s[i+1]; i++; }
+    int loop2 = Code.pc;
+    Code.put(Code.load_n + 2); // i
+    Code.put(Code.load_n);     // s
+    Code.loadConst(0);
+    Code.put(Code.aload);      // size
+    Code.putFalseJump(Code.lt, 0);
+    int jDoneShift = Code.pc - 2;
+
+    // s[i] = s[i+1]
+    Code.put(Code.load_n);         // s
+    Code.put(Code.load_n + 2);     // i
+    Code.put(Code.load_n);         // s
+    Code.put(Code.load_n + 2);     // i
+    Code.loadConst(1);
+    Code.put(Code.add);            // i+1
+    Code.put(Code.aload);          // s[i+1]
+    Code.put(Code.astore);         // s[i] = s[i+1]
+
+    // i++
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 2);
+    Code.putJump(loop2);
+
+    Code.fixup(jDoneShift);
+
+    // s[0] = s[0] - 1;
+    Code.put(Code.load_n);  // s
+    Code.loadConst(0);
+    Code.put(Code.load_n);  // s
+    Code.loadConst(0);
+    Code.put(Code.aload);   // size
+    Code.loadConst(1);
+    Code.put(Code.sub);
+    Code.put(Code.astore);
+    // return
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+
+    // continue: i++
+    Code.fixup(jContinue);
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 2);
+    Code.putJump(loop);
+
+    // not found -> return
+    Code.fixup(jNotFound);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+private static void generateSwapSet() {
+    Obj swapSet  = Tab.find("swapSet");   // void swapSet(set s, int e1, int e2)
+    Obj contains = Tab.find("contains");  // int contains(set,int)
+    Obj remove   = Tab.find("remove");    // void remove(set,int)  (po VREDNOSTI, kao što smo pričali)
+    Obj add      = Tab.find("add");       // void add(set,int)
+
+    swapSet.setAdr(Code.pc);
+
+    Code.put(Code.enter);
+    Code.put(3); // formals: s(0), e1(1), e2(2)
+    Code.put(5); // locals frame: dodaćemo r1(3), r2(4)
+
+    // r1 = contains(s, e1)
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 1);   // e1
+    Code.put(Code.call);
+    Code.put2(contains.getAdr() - Code.pc + 1);
+    Code.put(Code.store_n + 3);  // r1
+
+    // r2 = contains(s, e2)
+    Code.put(Code.load_n);       // s
+    Code.put(Code.load_n + 2);   // e2
+    Code.put(Code.call);
+    Code.put2(contains.getAdr() - Code.pc + 1);
+    Code.put(Code.store_n + 4);  // r2
+
+    // CASE 1: r1 != 0 && r2 == 0  -> remove(s,e1); add(s,e2); return
+    Code.put(Code.load_n + 3);   // r1
+    Code.loadConst(0);
+    Code.putFalseJump(Code.ne, 0);     // ako je r1 == 0, preskoči u CASE 2
+    int LcheckCase2 = Code.pc - 2;
+
+    Code.put(Code.load_n + 4);   // r2
+    Code.loadConst(0);
+    Code.putFalseJump(Code.eq, 0);     // ako r2 != 0, preskoči posle CASE 1
+    int LafterCase1 = Code.pc - 2;
+
+    // remove(s, e1)
+    Code.put(Code.load_n);
+    Code.put(Code.load_n + 1);
+    Code.put(Code.call);
+    Code.put2(remove.getAdr() - Code.pc + 1);
+
+    // add(s, e2)
+    Code.put(Code.load_n);
+    Code.put(Code.load_n + 2);
+    Code.put(Code.call);
+    Code.put2(add.getAdr() - Code.pc + 1);
+
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+
+    // CASE 2: r2 != 0 && r1 == 0  -> remove(s,e2); add(s,e1); return
+    Code.fixup(LcheckCase2);
+
+    Code.put(Code.load_n + 4);   // r2
+    Code.loadConst(0);
+    Code.putFalseJump(Code.ne, 0);     // ako je r2 == 0, nema posla -> kraj
+    int Lend = Code.pc - 2;
+
+    Code.put(Code.load_n + 3);   // r1
+    Code.loadConst(0);
+    Code.putFalseJump(Code.eq, 0);     // ako r1 != 0, nema posla -> kraj
+    int Lend2 = Code.pc - 2;
+
+    // remove(s, e2)
+    Code.put(Code.load_n);
+    Code.put(Code.load_n + 2);
+    Code.put(Code.call);
+    Code.put2(remove.getAdr() - Code.pc + 1);
+
+    // add(s, e1)
+    Code.put(Code.load_n);
+    Code.put(Code.load_n + 1);
+    Code.put(Code.call);
+    Code.put2(add.getAdr() - Code.pc + 1);
+
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+
+    // kraj bez izmene:
+    Code.fixup(LafterCase1);
+    Code.fixup(Lend);
+    Code.fixup(Lend2);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+private static void generateSwapAt() {
+    Obj swapAt = Tab.find("swapAt");  // void swapAt(set,int,int)
+    swapAt.setAdr(Code.pc);
+
+    Code.put(Code.enter);
+    Code.put(3); // formals: s(0), i(1), j(2)
+    Code.put(4); // ukupno slotova: s,i,j + t(3)
+
+    // i >= 1 ?
+    Code.put(Code.load_n + 1);
+    Code.loadConst(1);
+    int okIge1 = Code.pc + 1;
+    Code.putFalseJump(Code.ge, 0);
+    Code.put(Code.trap); Code.put(2);
+    Code.fixup(okIge1);
+
+    // i <= s[0] ?
+    Code.put(Code.load_n + 1);
+    Code.put(Code.load_n);
+    Code.loadConst(0);
+    Code.put(Code.aload);
+    int okIle = Code.pc + 1;
+    Code.putFalseJump(Code.le, 0);
+    Code.put(Code.trap); Code.put(2);
+    Code.fixup(okIle);
+
+    // j >= 1 ?
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    int okJge1 = Code.pc + 1;
+    Code.putFalseJump(Code.ge, 0);
+    Code.put(Code.trap); Code.put(2);
+    Code.fixup(okJge1);
+
+    // j <= s[0] ?
+    Code.put(Code.load_n + 2);
+    Code.put(Code.load_n);
+    Code.loadConst(0);
+    Code.put(Code.aload);
+    int okJle = Code.pc + 1;
+    Code.putFalseJump(Code.le, 0);
+    Code.put(Code.trap); Code.put(2);
+    Code.fixup(okJle);
+
+    // if (i == j) return;
+    Code.put(Code.load_n + 1);
+    Code.put(Code.load_n + 2);
+    int cont = Code.pc + 1;
+    Code.putFalseJump(Code.ne, 0); // skok kad i==j
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+    Code.fixup(cont);
+
+    // t = s[i];
+    Code.put(Code.load_n);      // s
+    Code.put(Code.load_n + 1);  // i
+    Code.put(Code.aload);       // s[i]
+    Code.put(Code.store_n + 3); // t
+
+    // s[i] = s[j];
+    Code.put(Code.load_n);      // s
+    Code.put(Code.load_n + 1);  // i
+    Code.put(Code.load_n);      // s
+    Code.put(Code.load_n + 2);  // j
+    Code.put(Code.aload);       // s[j]
+    Code.put(Code.astore);      // s[i] = s[j]
+
+    // s[j] = t;
+    Code.put(Code.load_n);      // s
+    Code.put(Code.load_n + 2);  // j
+    Code.put(Code.load_n + 3);  // t
+    Code.put(Code.astore);
+
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+
+private static void generateSortInt() {
+    Obj sortInt = Tab.find("sortInt");
+    sortInt.setAdr(Code.pc);
+
+    // formals=1 (a), locals=3 (i, j, t)
+    Code.put(Code.enter);
+    Code.put(1);
+    Code.put(4);
+
+    // i = 0;
+    Code.loadConst(0);
+    Code.put(Code.store_n + 1);
+
+    int L_outer = Code.pc;
+    // if (i >= len(a)-1) goto END;
+    Code.put(Code.load_n + 1);        // i
+    Code.put(Code.load_n);            // i, a
+    Code.put(Code.arraylength);       // i, n
+    Code.loadConst(1);                // i, n, 1
+    Code.put(Code.sub);               // i, n-1
+    Code.putFalseJump(Code.lt, 0);    // i < n-1 ? else END
+    int J_end = Code.pc - 2;
+
+    // j = 0;
+    Code.loadConst(0);
+    Code.put(Code.store_n + 2);
+
+    int L_inner = Code.pc;
+    // if (j >= len(a)-1-i) goto INC_I;
+    Code.put(Code.load_n + 2);        // j
+    Code.put(Code.load_n);            // j, a
+    Code.put(Code.arraylength);       // j, n
+    Code.loadConst(1);                // j, n, 1
+    Code.put(Code.sub);               // j, n-1
+    Code.put(Code.load_n + 1);        // j, n-1, i
+    Code.put(Code.sub);               // j, n-1-i
+    Code.putFalseJump(Code.lt, 0);    // j < n-1-i ? else INC_I
+    int J_inc_i = Code.pc - 2;
+
+    // // if (a[j] > a[j+1]) swap
+    // a[j]
+    Code.put(Code.load_n);            // a
+    Code.put(Code.load_n + 2);        // a, j
+    Code.put(Code.aload);             // a[j]
+
+    // a[j+1]
+    Code.put(Code.load_n);            // a
+    Code.put(Code.load_n + 2);        // a, j
+    Code.loadConst(1);                // a, j, 1
+    Code.put(Code.add);               // a, j+1
+    Code.put(Code.aload);             // a[j+1]
+
+    // if (!(a[j] > a[j+1])) skip swap
+    Code.putFalseJump(Code.gt, 0);
+    int J_skip = Code.pc - 2;
+
+    // t = a[j]
+    Code.put(Code.load_n);            // a
+    Code.put(Code.load_n + 2);        // a, j
+    Code.put(Code.aload);             // a[j]
+    Code.put(Code.store_n + 3);       // t
+
+    // a[j] = a[j+1]
+    Code.put(Code.load_n);            // a
+    Code.put(Code.load_n + 2);        // a, j
+    Code.put(Code.load_n);            // a, j, a
+    Code.put(Code.load_n + 2);        // a, j, a, j
+    Code.loadConst(1);                // a, j, a, j, 1
+    Code.put(Code.add);               // a, j, a, j+1
+    Code.put(Code.aload);             // a, j, a[j+1]
+    Code.put(Code.astore);
+
+    // a[j+1] = t
+    Code.put(Code.load_n);            // a
+    Code.put(Code.load_n + 2);        // a, j
+    Code.loadConst(1);                // a, j, 1
+    Code.put(Code.add);               // a, j+1
+    Code.put(Code.load_n + 3);        // a, j+1, t
+    Code.put(Code.astore);
+
+    // skip:
+    Code.fixup(J_skip);
+
+    // j++
+    Code.put(Code.load_n + 2);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 2);
+    Code.putJump(L_inner);
+
+    // INC_I:
+    Code.fixup(J_inc_i);
+    Code.put(Code.load_n + 1);
+    Code.loadConst(1);
+    Code.put(Code.add);
+    Code.put(Code.store_n + 1);
+    Code.putJump(L_outer);
+
+    // END:
+    Code.fixup(J_end);
+    Code.put(Code.exit);
+    Code.put(Code.return_);
+}
+
+

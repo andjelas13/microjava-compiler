@@ -1,0 +1,23 @@
+program test1
+
+	const int jedan = 1;
+	const int dva = 2;
+
+	int niz[];
+
+{
+	void main()
+		int bodovi;
+	{
+		bodovi = 0;
+		niz = new int[5];
+		niz[0] = jedan;
+		niz[1] = dva;
+		bodovi = niz[0] + niz[1];
+		print(bodovi);  // Očekivani izlaz: 3
+	}
+}
+
+
+//javac -cp path_to_tools:. MyParser.java
+//java -cp path_to_tools:. MyParser test/test_input.MJ > test/test_output.out 2> test/test_output.err

@@ -1,0 +1,138 @@
+// generated with ast extension for cup
+// version 0.8
+// 15/8/2025 20:48:4
+
+
+package rs.ac.bg.etf.pp1.ast;
+
+public class MatrixArray extends Designator {
+
+    private DesignatorName DesignatorName;
+    private Expr Expr;
+    private DummyMatrix DummyMatrix;
+    private Expr Expr1;
+    private DummyMatrix2 DummyMatrix2;
+
+    public MatrixArray (DesignatorName DesignatorName, Expr Expr, DummyMatrix DummyMatrix, Expr Expr1, DummyMatrix2 DummyMatrix2) {
+        this.DesignatorName=DesignatorName;
+        if(DesignatorName!=null) DesignatorName.setParent(this);
+        this.Expr=Expr;
+        if(Expr!=null) Expr.setParent(this);
+        this.DummyMatrix=DummyMatrix;
+        if(DummyMatrix!=null) DummyMatrix.setParent(this);
+        this.Expr1=Expr1;
+        if(Expr1!=null) Expr1.setParent(this);
+        this.DummyMatrix2=DummyMatrix2;
+        if(DummyMatrix2!=null) DummyMatrix2.setParent(this);
+    }
+
+    public DesignatorName getDesignatorName() {
+        return DesignatorName;
+    }
+
+    public void setDesignatorName(DesignatorName DesignatorName) {
+        this.DesignatorName=DesignatorName;
+    }
+
+    public Expr getExpr() {
+        return Expr;
+    }
+
+    public void setExpr(Expr Expr) {
+        this.Expr=Expr;
+    }
+
+    public DummyMatrix getDummyMatrix() {
+        return DummyMatrix;
+    }
+
+    public void setDummyMatrix(DummyMatrix DummyMatrix) {
+        this.DummyMatrix=DummyMatrix;
+    }
+
+    public Expr getExpr1() {
+        return Expr1;
+    }
+
+    public void setExpr1(Expr Expr1) {
+        this.Expr1=Expr1;
+    }
+
+    public DummyMatrix2 getDummyMatrix2() {
+        return DummyMatrix2;
+    }
+
+    public void setDummyMatrix2(DummyMatrix2 DummyMatrix2) {
+        this.DummyMatrix2=DummyMatrix2;
+    }
+
+    public void accept(Visitor visitor) {
+        visitor.visit(this);
+    }
+
+    public void childrenAccept(Visitor visitor) {
+        if(DesignatorName!=null) DesignatorName.accept(visitor);
+        if(Expr!=null) Expr.accept(visitor);
+        if(DummyMatrix!=null) DummyMatrix.accept(visitor);
+        if(Expr1!=null) Expr1.accept(visitor);
+        if(DummyMatrix2!=null) DummyMatrix2.accept(visitor);
+    }
+
+    public void traverseTopDown(Visitor visitor) {
+        accept(visitor);
+        if(DesignatorName!=null) DesignatorName.traverseTopDown(visitor);
+        if(Expr!=null) Expr.traverseTopDown(visitor);
+        if(DummyMatrix!=null) DummyMatrix.traverseTopDown(visitor);
+        if(Expr1!=null) Expr1.traverseTopDown(visitor);
+        if(DummyMatrix2!=null) DummyMatrix2.traverseTopDown(visitor);
+    }
+
+    public void traverseBottomUp(Visitor visitor) {
+        if(DesignatorName!=null) DesignatorName.traverseBottomUp(visitor);
+        if(Expr!=null) Expr.traverseBottomUp(visitor);
+        if(DummyMatrix!=null) DummyMatrix.traverseBottomUp(visitor);
+        if(Expr1!=null) Expr1.traverseBottomUp(visitor);
+        if(DummyMatrix2!=null) DummyMatrix2.traverseBottomUp(visitor);
+        accept(visitor);
+    }
+
+    public String toString(String tab) {
+        StringBuffer buffer=new StringBuffer();
+        buffer.append(tab);
+        buffer.append("MatrixArray(\n");
+
+        if(DesignatorName!=null)
+            buffer.append(DesignatorName.toString("  "+tab));
+        else
+            buffer.append(tab+"  null");
+        buffer.append("\n");
+
+        if(Expr!=null)
+            buffer.append(Expr.toString("  "+tab));
+        else
+            buffer.append(tab+"  null");
+        buffer.append("\n");
+
+        if(DummyMatrix!=null)
+            buffer.append(DummyMatrix.toString("  "+tab));
+        else
+            buffer.append(tab+"  null");
+        buffer.append("\n");
+
+        if(Expr1!=null)
+            buffer.append(Expr1.toString("  "+tab));
+        else
+            buffer.append(tab+"  null");
+        buffer.append("\n");
+
+        if(DummyMatrix2!=null)
+            buffer.append(DummyMatrix2.toString("  "+tab));
+        else
+            buffer.append(tab+"  null");
+        buffer.append("\n");
+
+        buffer.append(tab);
+        buffer.append(") [MatrixArray]");
+        return buffer.toString();
+    }
+}
